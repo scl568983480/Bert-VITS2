@@ -21,6 +21,24 @@ import utils
 from infer import infer, latest_version, get_net_g, infer_multilang
 import gradio as gr
 import webbrowser
+
+# 本机 hosts 未将 localhost 映射到 127.0.0.1（常见于 Docker Desktop 覆盖 hosts 的环境），
+# 会导致 gradio 启动时的 localhost 可达性自检失败而拒绝启动。实际 127.0.0.1 可访问，
+# 故在运行时跳过针对 localhost/0.0.0.0 的可达性自检（仅作用于本进程，不改系统、不改依赖源）。
+import gradio.networking as _gradio_networking
+
+_orig_url_ok = _gradio_networking.url_ok
+
+
+def _patched_url_ok(url, *args, **kwargs):
+    # 本机 hosts 未映射 localhost，且 gradio 内部用 127.0.0.1 构造 local_url，
+    # 因系统代理/防火墙或 DNS 原因 url_ok 自检会失败；本地服务确可访问，故放行。
+    if any(s in url for s in ("localhost", "0.0.0.0", "127.0.0.1")):
+        return True
+    return _orig_url_ok(url, *args, **kwargs)
+
+
+_gradio_networking.url_ok = _patched_url_ok
 import numpy as np
 from config import config
 from tools.translate import translate

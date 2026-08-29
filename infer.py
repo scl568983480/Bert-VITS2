@@ -20,54 +20,11 @@ import utils
 from models import SynthesizerTrn
 from text.symbols import symbols
 
-from oldVersion.V220.models import SynthesizerTrn as V220SynthesizerTrn
-from oldVersion.V220.text import symbols as V220symbols
-from oldVersion.V210.models import SynthesizerTrn as V210SynthesizerTrn
-from oldVersion.V210.text import symbols as V210symbols
-from oldVersion.V200.models import SynthesizerTrn as V200SynthesizerTrn
-from oldVersion.V200.text import symbols as V200symbols
-from oldVersion.V111.models import SynthesizerTrn as V111SynthesizerTrn
-from oldVersion.V111.text import symbols as V111symbols
-from oldVersion.V110.models import SynthesizerTrn as V110SynthesizerTrn
-from oldVersion.V110.text import symbols as V110symbols
-from oldVersion.V101.models import SynthesizerTrn as V101SynthesizerTrn
-from oldVersion.V101.text import symbols as V101symbols
-
-from oldVersion import V111, V110, V101, V200, V210, V220
-
 # 当前版本信息
 latest_version = "2.3"
 
-# 版本兼容
-SynthesizerTrnMap = {
-    "2.2": V220SynthesizerTrn,
-    "2.1": V210SynthesizerTrn,
-    "2.0.2-fix": V200SynthesizerTrn,
-    "2.0.1": V200SynthesizerTrn,
-    "2.0": V200SynthesizerTrn,
-    "1.1.1-fix": V111SynthesizerTrn,
-    "1.1.1": V111SynthesizerTrn,
-    "1.1": V110SynthesizerTrn,
-    "1.1.0": V110SynthesizerTrn,
-    "1.0.1": V101SynthesizerTrn,
-    "1.0": V101SynthesizerTrn,
-    "1.0.0": V101SynthesizerTrn,
-}
-
-symbolsMap = {
-    "2.2": V220symbols,
-    "2.1": V210symbols,
-    "2.0.2-fix": V200symbols,
-    "2.0.1": V200symbols,
-    "2.0": V200symbols,
-    "1.1.1-fix": V111symbols,
-    "1.1.1": V111symbols,
-    "1.1": V110symbols,
-    "1.1.0": V110symbols,
-    "1.0.1": V101symbols,
-    "1.0": V101symbols,
-    "1.0.0": V101symbols,
-}
+# 旧版本（<2.3）的模型类与符号表改为在 get_net_g / infer 内按需延迟导入，
+# 避免 webui 启动即加载所有旧版本依赖（pyopenjtalk、各语种 BERT 等）。
 
 
 # def get_emo_(reference_audio, emotion, sid):
@@ -83,8 +40,29 @@ symbolsMap = {
 
 def get_net_g(model_path: str, version: str, device: str, hps):
     if version != latest_version:
-        net_g = SynthesizerTrnMap[version](
-            len(symbolsMap[version]),
+        # 延迟导入对应版本的模型类与符号表，避免启动即加载所有旧版本依赖
+        if version == "2.2":
+            from oldVersion.V220.models import SynthesizerTrn as Net
+            from oldVersion.V220.text import symbols as Sym
+        elif version == "2.1":
+            from oldVersion.V210.models import SynthesizerTrn as Net
+            from oldVersion.V210.text import symbols as Sym
+        elif version in ("2.0.2-fix", "2.0.1", "2.0"):
+            from oldVersion.V200.models import SynthesizerTrn as Net
+            from oldVersion.V200.text import symbols as Sym
+        elif version in ("1.1.1-fix", "1.1.1"):
+            from oldVersion.V111.models import SynthesizerTrn as Net
+            from oldVersion.V111.text import symbols as Sym
+        elif version in ("1.1", "1.1.0"):
+            from oldVersion.V110.models import SynthesizerTrn as Net
+            from oldVersion.V110.text import symbols as Sym
+        elif version in ("1.0.1", "1.0", "1.0.0"):
+            from oldVersion.V101.models import SynthesizerTrn as Net
+            from oldVersion.V101.text import symbols as Sym
+        else:
+            raise ValueError(f"Unsupported model version: {version}")
+        net_g = Net(
+            len(Sym),
             hps.data.filter_length // 2 + 1,
             hps.train.segment_size // hps.data.hop_length,
             n_speakers=hps.data.n_speakers,
@@ -166,36 +144,12 @@ def infer(
     style_text=None,
     style_weight=0.7,
 ):
-    # 2.2版本参数位置变了
-    inferMap_V4 = {
-        "2.2": V220.infer,
-    }
-    # 2.1 参数新增 emotion reference_audio skip_start skip_end
-    inferMap_V3 = {
-        "2.1": V210.infer,
-    }
-    # 支持中日英三语版本
-    inferMap_V2 = {
-        "2.0.2-fix": V200.infer,
-        "2.0.1": V200.infer,
-        "2.0": V200.infer,
-        "1.1.1-fix": V111.infer_fix,
-        "1.1.1": V111.infer,
-        "1.1": V110.infer,
-        "1.1.0": V110.infer,
-    }
-    # 仅支持中文版本
-    # 在测试中，并未发现两个版本的模型不能互相通用
-    inferMap_V1 = {
-        "1.0.1": V101.infer,
-        "1.0": V101.infer,
-        "1.0.0": V101.infer,
-    }
     version = hps.version if hasattr(hps, "version") else latest_version
-    # 非当前版本，根据版本号选择合适的infer
+    # 非当前版本，根据版本号选择合适的 infer（延迟导入旧版本模块，避免启动即加载其依赖）
     if version != latest_version:
-        if version in inferMap_V4.keys():
-            return inferMap_V4[version](
+        if version == "2.2":
+            from oldVersion.V220 import infer as v_infer
+            return v_infer(
                 text,
                 emotion,
                 sdp_ratio,
@@ -213,8 +167,9 @@ def infer(
                 style_text,
                 style_weight,
             )
-        if version in inferMap_V3.keys():
-            return inferMap_V3[version](
+        if version == "2.1":
+            from oldVersion.V210 import infer as v_infer
+            return v_infer(
                 text,
                 sdp_ratio,
                 noise_scale,
@@ -232,8 +187,22 @@ def infer(
                 style_text,
                 style_weight,
             )
-        if version in inferMap_V2.keys():
-            return inferMap_V2[version](
+        if version in ("2.0.2-fix", "2.0.1", "2.0", "1.1.1-fix", "1.1.1", "1.1", "1.1.0"):
+            if version == "2.0.2-fix":
+                from oldVersion.V200 import infer as v_infer
+            elif version == "2.0.1":
+                from oldVersion.V200 import infer as v_infer
+            elif version == "2.0":
+                from oldVersion.V200 import infer as v_infer
+            elif version == "1.1.1-fix":
+                from oldVersion.V111 import infer_fix as v_infer
+            elif version == "1.1.1":
+                from oldVersion.V111 import infer as v_infer
+            elif version == "1.1":
+                from oldVersion.V110 import infer as v_infer
+            elif version == "1.1.0":
+                from oldVersion.V110 import infer as v_infer
+            return v_infer(
                 text,
                 sdp_ratio,
                 noise_scale,
@@ -245,8 +214,9 @@ def infer(
                 net_g,
                 device,
             )
-        if version in inferMap_V1.keys():
-            return inferMap_V1[version](
+        if version in ("1.0.1", "1.0", "1.0.0"):
+            from oldVersion.V101 import infer as v_infer
+            return v_infer(
                 text,
                 sdp_ratio,
                 noise_scale,

@@ -10,6 +10,19 @@ For quick guide, please refer to `webui_preprocess.py`.
 
 简易教程请参见 `webui_preprocess.py`。
 
+## 快速启动
+
+```bash
+# 安装依赖
+pip install -r requirements.txt
+
+# 启动 Web UI（默认 http://127.0.0.1:7860）
+python webui.py
+```
+
+> 模型路径、推理设备等通过 [config.yml](config.yml) 配置（当前示例：`Data/voice_cn/models/G_0.pth`，CPU 推理）。
+> 若使用项目自带虚拟环境（Windows）：`./venv/Scripts/python.exe webui.py`
+
 ## 【项目推介】
 # FishAudio下的全新自回归TTS [Fish-Speech](https://github.com/fishaudio/fish-speech)现已可用，效果为目前开源SOTA水准，且在持续维护，推荐使用该项目作为BV2/GSV的替代。本项目短期内不再进行维护。
 ## Demo Video: https://www.bilibili.com/video/BV18E421371Q

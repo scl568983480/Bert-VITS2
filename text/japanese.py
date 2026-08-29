@@ -9,7 +9,6 @@ from text import punctuation, symbols
 
 from num2words import num2words
 
-import pyopenjtalk
 import jaconv
 
 # Mapping of hiragana to phonetic representation
@@ -380,6 +379,8 @@ _MARKS = re.compile(
 
 
 def text2sep_kata(text: str):
+    import pyopenjtalk
+
     parsed = pyopenjtalk.run_frontend(text)
     res = []
     sep = []
@@ -413,6 +414,8 @@ def text2sep_kata(text: str):
 
 
 def get_accent(parsed):
+    import pyopenjtalk
+
     labels = pyopenjtalk.make_label(parsed)
 
     phonemes = []
@@ -629,7 +632,7 @@ def handle_long(sep_phonemes):
     return sep_phonemes
 
 
-tokenizer = AutoTokenizer.from_pretrained("./bert/deberta-v2-large-japanese-char-wwm")
+_tokenizer = None
 
 
 def align_tones(phones, tones):
@@ -675,11 +678,16 @@ def rearrange_tones(tones, phones):
 
 
 def g2p(norm_text):
+    global _tokenizer
+    if _tokenizer is None:
+        _tokenizer = AutoTokenizer.from_pretrained(
+            "./bert/deberta-v2-large-japanese-char-wwm"
+        )
     sep_text, sep_kata, acc = text2sep_kata(norm_text)
     sep_tokenized = []
     for i in sep_text:
         if i not in punctuation:
-            sep_tokenized.append(tokenizer.tokenize(i))
+            sep_tokenized.append(_tokenizer.tokenize(i))
         else:
             sep_tokenized.append([i])
 

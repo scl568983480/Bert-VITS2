@@ -98,22 +98,30 @@ train_ms:
 
 # webui webui配置
 # 注意， “:” 后需要加空格
-webui:
+#webui:
   # 推理设备
-  device: "cuda"
+  #device: "cuda"
   # 模型路径
-  model: "models/G_8000.pth"
+  #model: "models/G_8000.pth"
   # 配置文件路径
-  config_path: "configs/config.json"
+  #config_path: "configs/config.json"
   # 端口号
-  port: 7860
+  #port: 7860
   # 是否公开部署，对外网开放
-  share: false
+  #share: false
   # 是否开启debug模式
-  debug: false
+  #debug: false
   # 语种识别库，可选langid, fastlid
+  #language_identification_library: "langid"
+fp16_run: false
+  
+webui:
+  device: "cpu"
+  model: "Data/voice_cn/models/G_0.pth"
+  config_path: "Data/voice_cn/config.json"
+  share: false
+  debug: false
   language_identification_library: "langid"
-
 
 # server-fastapi配置
 # 注意， “:” 后需要加空格
